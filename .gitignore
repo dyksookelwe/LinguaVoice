@@ -1,1 +1,13 @@
 .env
+.venv/
+.venv
+*.py[cod]
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+node_modules/
+dist/
+build/
+var/
+backend/var/
+*.egg-info/
