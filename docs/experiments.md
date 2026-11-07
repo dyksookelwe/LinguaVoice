@@ -1,40 +1,28 @@
 # Experiments
 
-## Voice Cloning
+## Voice cloning: XTTS-v2 (local, coqui-tts 0.28.0)
 
-### Goal
+**Setup.** Reference: 13 s Slovak speech sample (mono, 24 kHz, one speaker).
+Target: English phrases. Hardware: NVIDIA GeForce RTX 2060 (6 GB), PyTorch
+2.6.0+cu124, Python 3.11 (separate environment). Scripts:
+`backend/scripts/experiments/clone_xtts.py` and `fallback_xtts.py`.
 
-Find a voice cloning solution that preserves speaker identity when generating Slovak speech from a short English voice reference.
+**Results.**
 
-### Preliminary results
+| Case | Time |
+|---|---|
+| Model load (first run, includes ~2 GB download) | 99.5 s |
+| Clone, short phrase | 5.7 s |
+| Clone, longer phrase (2 sentences) | 8.0 s |
+| Built-in voice (fallback), longer phrase | 5.8 s |
 
-| Provider | Test | Observation |
-|---|---|---|
-| ElevenLabs Instant | Short and ~2-minute references; English and Slovak output | Longer reference improved similarity, but the generated voice was still noticeably different. Changing the output language made little difference. |
-| Cartesia | English and Slovak output | More convincing similarity, but listeners did not consider it the same voice. |
-| Polyvox | Short reference; Slovak output | Best result among tested providers. Listeners noticed similarities, but the voice was still not reliably perceived as the same person. |
+**Listening notes (subjective, one listener).**
+- Clone: timbre is similar to the original, not identical. Slightly robotic
+  on the longer phrase. English is intelligible; no background noise.
+- Built-in voice: different speaker by design; sounds unnatural.
 
-**Current conclusion:** Polyvox is the leading candidate, not a final choice. These results are preliminary and based on limited listening tests.
-
-### Next steps
-
-1. Select one reference recording and one fixed Slovak text.
-2. Generate outputs using the same conditions wherever possible.
-3. Ask 3–5 people familiar with the reference speaker to compare the original and generated audio without being told which is which.
-4. Record similarity ratings on a 1–5 scale and whether listeners identify the same speaker.
-5. Evaluate the original and generated audio with an automated speaker-verification model. Record the model, score, and limitations.
-6. Repeat with a second speaker to check whether the results generalize.
-7. Verify API access, commercial usage terms, and cost before selecting a provider.
-
-### Evaluation criteria
-
-- Perceived speaker similarity
-- Blind identification of the same speaker
-- Automated speaker-similarity score
-- Slovak intelligibility and naturalness
-- Minimum reference audio duration
-- API availability and cost
-
-### Current status
-
-Voice cloning feasibility is not yet confirmed. No provider has met a defined acceptance threshold because the threshold and evaluation procedure have not yet been established.
+**Limitations.**
+- A Slovak reference is used for English output (cross-lingual cloning), which
+  may lower similarity compared with an English reference of the same speaker.
+- Only one reference sample and one listener, so no objective similarity score.
+- Generation is a few seconds per phrase on GPU; first load is slow.

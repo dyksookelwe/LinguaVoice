@@ -39,3 +39,22 @@
 - The application orchestrates named functions. It does not send a recording to a general AI model with a request to return dubbed audio.
 - ASR, translation, and synthesis models may be called only from their own function, with fixed inputs and structured outputs.
 - Alignment, duration limits, job status, and metrics are application logic.
+## Stage 2: voice cloning provider
+
+**Decision.** Primary clone: XTTS-v2 (open model, runs locally, no API key).
+Fallback: XTTS-v2 built-in voice for now; revisit at Stage 5 if its quality
+stays poor.
+
+**Why.** No paid account or API key needed, works offline, fits the limited
+API budget, and the result is "similar, not identical", which is acceptable
+for the MVP.
+
+**Consequences.**
+- XTTS needs Python 3.10-3.12, while the main backend runs on 3.14. XTTS lives
+  in a separate environment (`.venv-tts`, Python 3.11); how the backend calls
+  it (subprocess or small separate service) is decided at Stage 5.
+- Model weights use the Coqui Public Model License (non-commercial); fine for
+  this educational project, not for commercial use.
+- Voice samples are real people's voices: they stay out of git
+  (`backend/scripts/samples_raw/` is ignored) and are used only with the
+  speaker's consent.

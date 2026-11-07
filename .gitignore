@@ -11,3 +11,5 @@ build/
 var/
 backend/var/
 *.egg-info/
+backend/scripts/samples_raw/
+.venv-tts/
