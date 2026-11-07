@@ -12,5 +12,5 @@ def synthesize_segment(
 ) -> Path:
     """Generate Slovak audio for one segment. Cloning vs TTS is our switch."""
     if use_cloning:
-        return clone_speech(segment.sk_text, reference_wav, language="sk")
-    return synthesize_speech(segment.sk_text, language="sk")
+        return clone_speech(segment.tgt_text, reference_wav, language="en")
+    return synthesize_speech(segment.tgt_text, language="en")

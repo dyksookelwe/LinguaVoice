@@ -5,8 +5,8 @@ class Segment(BaseModel):
     id: str
     start: float
     end: float
-    en_text: str = ""
-    sk_text: str = ""
+    src_text: str = ""
+    tgt_text: str = ""
     audio_path: str | None = None
     src_duration: float = 0.0
     gen_duration: float = 0.0

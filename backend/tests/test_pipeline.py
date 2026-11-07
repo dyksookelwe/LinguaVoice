@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import wave
 import pytest
 
 from app.schemas.job import Job, JobStatus
@@ -9,9 +9,18 @@ from app.schemas.segment import Segment
 
 
 def test_run_pipeline_is_a_function_chain(tmp_path: Path) -> None:
-    job = Job(id="job-1", source_path=str(tmp_path / "sample.wav"))
-    with pytest.raises(NotImplementedError, match="stage 1"):
+    wav_path = tmp_path / "sample.wav"
+    with wave.open(str(wav_path), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(16000)
+        wav.writeframes(b"\x00\x00" * 16000)
+
+    job: Job = Job(id="job-1", source_path=str(wav_path))
+
+    with pytest.raises(NotImplementedError, match="stage 3"):
         run_pipeline(job)
+
     assert job.status == JobStatus.failed
 
 

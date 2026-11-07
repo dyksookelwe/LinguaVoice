@@ -24,8 +24,8 @@ def run_pipeline(job: Job) -> Job:
         segments = transcribe_and_segment(wav_path)
         for segment in segments:
             segment.src_duration = segment.duration
-            segment.sk_text = translate_segment(
-                segment.en_text, segment.src_duration
+            segment.tgt_text = translate_segment(
+                segment.src_text, segment.src_duration
             )
             segment.audio_path = str(
                 synthesize_segment(segment, wav_path, use_cloning=True)

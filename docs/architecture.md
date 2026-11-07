@@ -12,14 +12,14 @@ Job(source_path)
   -> convert_to_wav(audio) -> wav_path
   -> transcribe_and_segment(wav_path) -> list[Segment]
   -> for each Segment:
-        translate_segment(en_text, src_duration) -> sk_text
+        translate_segment(src_text, src_duration) -> tgt_text
         synthesize_segment(segment, reference_wav) -> segment wav
         align_segment(segment) -> stretch_ratio, gen_duration
   -> assemble_track(segments) -> output_path
   -> compute_metrics(job) -> Metrics
 ```
 
-`Segment` is the unit of work: `id`, `start`, `end`, `en_text`, `sk_text`, `audio_path`, `src_duration`, `gen_duration`, `stretch_ratio`.
+`Segment` is the unit of work: `id`, `start`, `end`, `src_text`, `tgt_text`, `audio_path`, `src_duration`, `gen_duration`, `stretch_ratio`.
 
 ## Module boundaries
 
@@ -29,6 +29,13 @@ Job(source_path)
 - `app/api/` — HTTP. Does not call models directly.
 - `app/schemas/` — job, segment, and metrics shapes.
 
-## Stage 0 status
+## Stage 1 status
 
-Function signatures and the orchestrator exist. Step implementations raise `NotImplementedError` until their stage lands.
+Audio intake is implemented: `validate_audio` checks extension, size, real
+content (via ffprobe) and duration; `convert_to_wav` produces mono 16 kHz WAV.
+`POST /jobs` saves the upload to `var/uploads/<job_id>/`, validates it and
+creates a Job. Invalid files are rejected (413 too large, 422 other) and their
+folder is removed immediately; old folders are removed after
+`UPLOAD_TTL_MINUTES`. Translation direction is fixed to SK -> EN.
+
+Remaining steps still raise `NotImplementedError` until their stage lands.
