@@ -39,3 +39,13 @@ folder is removed immediately; old folders are removed after
 `UPLOAD_TTL_MINUTES`. Translation direction is fixed to SK -> EN.
 
 Remaining steps still raise `NotImplementedError` until their stage lands.
+## Stage 3 status
+
+`transcribe_words` (providers/asr.py) runs faster-whisper `large-v3`
+(GPU float16, CPU int8 fallback) and returns words with timestamps; the
+language is set in config (`ASR_LANGUAGE`, default `sk`).
+`transcribe_and_segment` (services/transcribe.py) builds segments with our own
+rules: split on pauses (`SEGMENT_PAUSE_SEC`), merge short pieces
+(`SEGMENT_MIN_SEC`), split long ones at the biggest pause (`SEGMENT_MAX_SEC`).
+The rules are covered by `tests/test_stage3_segments.py` without loading the
+model.

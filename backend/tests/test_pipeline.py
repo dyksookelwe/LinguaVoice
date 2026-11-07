@@ -1,14 +1,15 @@
-from pathlib import Path
 import wave
+from pathlib import Path
+
 import pytest
 
 from app.schemas.job import Job, JobStatus
+from app.schemas.segment import Segment
 from app.services.metrics import compute_metrics
 from app.services.pipeline import run_pipeline
-from app.schemas.segment import Segment
 
 
-def test_run_pipeline_is_a_function_chain(tmp_path: Path) -> None:
+def test_run_pipeline_is_a_function_chain(tmp_path: Path, monkeypatch) -> None:
     wav_path = tmp_path / "sample.wav"
     with wave.open(str(wav_path), "wb") as wav:
         wav.setnchannels(1)
@@ -16,9 +17,15 @@ def test_run_pipeline_is_a_function_chain(tmp_path: Path) -> None:
         wav.setframerate(16000)
         wav.writeframes(b"\x00\x00" * 16000)
 
+    # подставляем слова вместо настоящей модели: тест не должен грузить Whisper
+    monkeypatch.setattr(
+        "app.services.transcribe.transcribe_words",
+        lambda path: [{"text": "Ahoj", "start": 0.0, "end": 1.0}],
+    )
+
     job: Job = Job(id="job-1", source_path=str(wav_path))
 
-    with pytest.raises(NotImplementedError, match="stage 3"):
+    with pytest.raises(NotImplementedError, match="stage 4"):
         run_pipeline(job)
 
     assert job.status == JobStatus.failed

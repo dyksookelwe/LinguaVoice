@@ -26,3 +26,14 @@ Target: English phrases. Hardware: NVIDIA GeForce RTX 2060 (6 GB), PyTorch
   may lower similarity compared with an English reference of the same speaker.
 - Only one reference sample and one listener, so no objective similarity score.
 - Generation is a few seconds per phrase on GPU; first load is slow.
+## ASR: faster-whisper, Slovak speech (26 s sample, RTX 2060, float16)
+
+| Model | Transcription time | Quality (subjective) |
+|---|---|---|
+| small | n/a (not recorded) | Many errors, start of the text lost |
+| medium | 2.9 s | Several word errors ("motele", "krydla") |
+| large-v3 | 4.1 s | Minor diacritics errors ("motyle", "oče"), meaning preserved |
+
+Segment timestamps matched the speaker's pauses for all models. Language is
+passed explicitly (`sk`). Whisper errors will propagate into translation, so
+segment text must be editable before translation (Stage 8).

@@ -4,3 +4,4 @@ pytest
 uvicorn
 python-multipart
 httpx
+faster-whisper

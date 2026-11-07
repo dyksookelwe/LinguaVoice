@@ -58,3 +58,20 @@ for the MVP.
 - Voice samples are real people's voices: they stay out of git
   (`backend/scripts/samples_raw/` is ignored) and are used only with the
   speaker's consent.
+  ## Stage 3: ASR model
+
+**Decision.** faster-whisper, model `large-v3`, local GPU (float16), language
+passed explicitly. Segmentation logic (merge short pieces, split on pauses,
+length limit) is our own code on top of Whisper's text and timestamps.
+
+**Why.** Lowest word error rate on Slovak in our test (see experiments.md);
+fast enough on the available GPU. No API cost.
+## Stage 3: single Python 3.11 environment (supersedes the Stage 2 note)
+
+**Decision.** The whole project (backend, Whisper, XTTS) runs in one
+environment: `.venv-tts`, Python 3.11, PyTorch 2.6.0+cu124. The Python 3.14
+environment (`backend/.venv`) is no longer used.
+
+**Why.** XTTS needs Python 3.10-3.12, and Python 3.14 support of the ASR
+dependencies was not confirmed. One environment lets the backend call both
+models directly, without subprocess calls.
