@@ -5,3 +5,5 @@ uvicorn
 python-multipart
 httpx
 faster-whisper
+deepl
+python-dotenv

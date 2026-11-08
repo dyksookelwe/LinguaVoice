@@ -22,10 +22,13 @@ def test_run_pipeline_is_a_function_chain(tmp_path: Path, monkeypatch) -> None:
         "app.services.transcribe.transcribe_words",
         lambda path: [{"text": "Ahoj", "start": 0.0, "end": 1.0}],
     )
+    monkeypatch.setattr(
+        "app.services.translate.translate_sk_to_en", lambda text: "Hello"
+    )
 
     job: Job = Job(id="job-1", source_path=str(wav_path))
 
-    with pytest.raises(NotImplementedError, match="stage 4"):
+    with pytest.raises(NotImplementedError, match="stage 5"):
         run_pipeline(job)
 
     assert job.status == JobStatus.failed

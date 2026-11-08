@@ -1,5 +1,11 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# .env лежит в корне проекта (на два уровня выше папки app)
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 
 @dataclass(frozen=True)
@@ -15,6 +21,9 @@ class Settings:
     segment_max_sec: float = float(os.getenv("SEGMENT_MAX_SEC", "8.0"))
     asr_model: str = os.getenv("ASR_MODEL", "large-v3")
     asr_language: str = os.getenv("ASR_LANGUAGE", "sk")
+    deepl_api_key: str = field(default=os.getenv("DEEPL_API_KEY", ""), repr=False)
+    tts_chars_per_sec: float = float(os.getenv("TTS_CHARS_PER_SEC", "14"))
+    length_tolerance: float = float(os.getenv("LENGTH_TOLERANCE", "1.1"))
 
 
 def get_settings() -> Settings:

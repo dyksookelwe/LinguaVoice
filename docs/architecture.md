@@ -49,3 +49,10 @@ rules: split on pauses (`SEGMENT_PAUSE_SEC`), merge short pieces
 (`SEGMENT_MIN_SEC`), split long ones at the biggest pause (`SEGMENT_MAX_SEC`).
 The rules are covered by `tests/test_stage3_segments.py` without loading the
 model.
+## Stage 4 status
+
+`translate_segment` (services/translate.py) calls DeepL through
+`providers/translation.py`, normalizes input and output, and the pipeline sets
+`Segment.text_too_long` using a characters-per-second estimate
+(`TTS_CHARS_PER_SEC`, `LENGTH_TOLERANCE`). Tests mock the engine, so they do
+not spend API characters.

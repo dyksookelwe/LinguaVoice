@@ -75,3 +75,22 @@ environment (`backend/.venv`) is no longer used.
 **Why.** XTTS needs Python 3.10-3.12, and Python 3.14 support of the ASR
 dependencies was not confirmed. One environment lets the backend call both
 models directly, without subprocess calls.
+## Stage 4: translation engine
+
+**Decision.** DeepL API (free developer plan, SK -> EN-US), called through the
+official `deepl` library. The engine is wrapped in `providers/translation.py`;
+our own code (`services/translate.py`) normalizes text, estimates speech
+length (characters per second) and flags segments whose translation will not
+fit the source window (`Segment.text_too_long`).
+
+**Why.** Strong quality on European languages, simple API, free allowance is
+far above our needs (a 2-minute recording is about 2,000 characters). A local
+alternative (`Helsinki-NLP/opus-mt-sk-en`) stays available if the key or the
+quota becomes a problem.
+
+**Notes.**
+- The API key lives only in `.env` (ignored by git).
+- Texts are sent to a third party. Check DeepL's data-handling terms for the
+  free plan and use only non-sensitive speech for the demo.
+- `TTS_CHARS_PER_SEC=14` is an initial guess; to be replaced by a measured
+  value at Stage 5.

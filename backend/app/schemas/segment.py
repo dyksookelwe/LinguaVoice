@@ -11,6 +11,7 @@ class Segment(BaseModel):
     src_duration: float = 0.0
     gen_duration: float = 0.0
     stretch_ratio: float = 1.0
+    text_too_long: bool = False
 
     @property
     def duration(self) -> float:

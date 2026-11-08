@@ -9,7 +9,7 @@ from app.schemas.job import Job, JobStatus
 from app.services.metrics import compute_metrics
 from app.services.synthesize import synthesize_segment
 from app.services.transcribe import transcribe_and_segment
-from app.services.translate import translate_segment
+from app.services.translate import is_text_too_long, translate_segment
 
 
 def run_pipeline(job: Job) -> Job:
@@ -27,6 +27,10 @@ def run_pipeline(job: Job) -> Job:
             segment.tgt_text = translate_segment(
                 segment.src_text, segment.src_duration
             )
+            segment.text_too_long = is_text_too_long(
+                segment.tgt_text, segment.src_duration
+            )
+        
             segment.audio_path = str(
                 synthesize_segment(segment, wav_path, use_cloning=True)
             )
