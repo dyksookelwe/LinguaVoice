@@ -94,3 +94,15 @@ quota becomes a problem.
   free plan and use only non-sensitive speech for the demo.
 - `TTS_CHARS_PER_SEC=14` is an initial guess; to be replaced by a measured
   value at Stage 5.
+  ## Stage 5: cloud voice cloning deferred
+
+**Decision.** Keep XTTS-v2 (local) for cloning and fallback for now. Cloud
+cloning (e.g. ElevenLabs) may be added at the end of the project as an optional
+adapter.
+
+**Why.** Cloud cloning needs a paid plan and a payment card, and the project
+budget is zero. Cloud quality is reportedly better, but we did not measure it
+for SK -> EN. The provider adapters (`providers/cloning.py`,
+`providers/tts.py`) keep the engine replaceable, so a cloud adapter can be
+added later without changing the pipeline. Any cloud provider would need the
+speaker's consent for cloning and non-sensitive demo audio.

@@ -12,6 +12,7 @@ class Segment(BaseModel):
     gen_duration: float = 0.0
     stretch_ratio: float = 1.0
     text_too_long: bool = False
+    voice: str = ""
 
     @property
     def duration(self) -> float:

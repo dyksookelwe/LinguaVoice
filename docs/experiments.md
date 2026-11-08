@@ -37,3 +37,23 @@ Target: English phrases. Hardware: NVIDIA GeForce RTX 2060 (6 GB), PyTorch
 Segment timestamps matched the speaker's pauses for all models. Language is
 passed explicitly (`sk`). Whisper errors will propagate into translation, so
 segment text must be editable before translation (Stage 8).
+## Synthesis inside the pipeline: XTTS-v2 clone (26 s Slovak reference, 6 segments)
+
+| Segment | Source, s | Generated, s | Ratio | chars/s |
+|---|---|---|---|---|
+| seg-1 | 2.5 | 2.8 | 1.12 | 18.7 |
+| seg-2 | 6.0 | 6.3 | 1.05 | 16.1 |
+| seg-3 | 3.6 | 4.4 | 1.20 | 16.7 |
+| seg-4 | 4.3 | 4.8 | 1.11 | 16.1 |
+| seg-5 | 2.5 | 2.7 | 1.08 | 15.2 |
+| seg-6 | 4.9 | 6.1 | 1.25 | 14.6 |
+
+Mean speech rate: 16.2 chars/s (`TTS_CHARS_PER_SEC` set to 16). English audio is
+5-25 % longer than the Slovak source; 4 of 6 segments exceed the 1.1 stretch
+limit planned for Stage 6.
+
+Reference sample rate: a 24 kHz reference gave a slightly cleaner clone than
+16 kHz (subjective, one listener), so cloning uses a separate 24 kHz reference
+while ASR keeps 16 kHz. Remaining artifacts: a slight robotic noise in clone
+output; fallback (built-in voice) sounds clearly robotic. Whisper is unloaded
+from GPU memory before synthesis (6 GB card).

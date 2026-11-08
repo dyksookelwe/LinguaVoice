@@ -37,10 +37,28 @@ def _run(wav_path: Path, device: str, compute_type: str) -> list[WordTimestamp]:
     return words
 
 
+def release_model() -> None:
+    """Выгружает Whisper из памяти, чтобы освободить видеокарту для озвучки."""
+    import gc
+
+    _load_model.cache_clear()
+    gc.collect()
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except ImportError:
+        pass
+
+
 def transcribe_words(wav_path: Path) -> list[WordTimestamp]:
     """Return words with timestamps from the ASR model. No segmentation logic."""
     try:
-        return _run(wav_path, "cuda", "float16")
-    except Exception:
-        # видеокарта недоступна или не хватило памяти: медленнее, но работает
-        return _run(wav_path, "cpu", "int8")
+        try:
+            return _run(wav_path, "cuda", "float16")
+        except Exception:
+            # видеокарта недоступна или не хватило памяти: медленнее, но работает
+            return _run(wav_path, "cpu", "int8")
+    finally:
+        release_model()

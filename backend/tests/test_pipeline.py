@@ -25,10 +25,20 @@ def test_run_pipeline_is_a_function_chain(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(
         "app.services.translate.translate_sk_to_en", lambda text: "Hello"
     )
+    def fake_clone(text, reference_wav, output_path, language="en"):
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with wave.open(str(output_path), "wb") as out:
+            out.setnchannels(1)
+            out.setsampwidth(2)
+            out.setframerate(24000)
+            out.writeframes(b"\x00\x00" * 24000)
+        return output_path
+
+    monkeypatch.setattr("app.services.synthesize.clone_speech", fake_clone)
 
     job: Job = Job(id="job-1", source_path=str(wav_path))
 
-    with pytest.raises(NotImplementedError, match="stage 5"):
+    with pytest.raises(NotImplementedError, match="stage 6"):
         run_pipeline(job)
 
     assert job.status == JobStatus.failed

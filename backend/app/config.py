@@ -22,8 +22,12 @@ class Settings:
     asr_model: str = os.getenv("ASR_MODEL", "large-v3")
     asr_language: str = os.getenv("ASR_LANGUAGE", "sk")
     deepl_api_key: str = field(default=os.getenv("DEEPL_API_KEY", ""), repr=False)
-    tts_chars_per_sec: float = float(os.getenv("TTS_CHARS_PER_SEC", "14"))
+    tts_chars_per_sec: float = float(os.getenv("TTS_CHARS_PER_SEC", "16"))
     length_tolerance: float = float(os.getenv("LENGTH_TOLERANCE", "1.1"))
+    xtts_model: str = os.getenv("XTTS_MODEL", "tts_models/multilingual/multi-dataset/xtts_v2")
+    xtts_speaker: str = os.getenv("XTTS_SPEAKER", "Claribel Dervla")
+    cloning_enabled: bool = os.getenv("CLONING_ENABLED", "true").lower() in ("1", "true", "yes")
+    voice_sample_rate: int = int(os.getenv("VOICE_SAMPLE_RATE", "24000"))
 
 
 def get_settings() -> Settings:

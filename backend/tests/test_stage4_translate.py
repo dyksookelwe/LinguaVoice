@@ -13,7 +13,7 @@ def test_normalize_text():
 
 
 def test_estimate_speech_seconds():
-    assert estimate_speech_seconds("a" * 28) == pytest.approx(2.0)
+    assert estimate_speech_seconds("a" * 32) == pytest.approx(2.0)
 
 
 def test_text_too_long_when_exceeds_window():
