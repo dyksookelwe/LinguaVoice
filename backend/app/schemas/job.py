@@ -20,6 +20,7 @@ class Job(BaseModel):
     status: JobStatus = JobStatus.queued
     reference_wav_path: str | None = None
     output_path: str | None = None
+    output_mp3_path: str | None = None
     segments: list[Segment] = Field(default_factory=list)
     metrics: Metrics | None = None
     error: str | None = None

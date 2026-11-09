@@ -57,3 +57,19 @@ Reference sample rate: a 24 kHz reference gave a slightly cleaner clone than
 while ASR keeps 16 kHz. Remaining artifacts: a slight robotic noise in clone
 output; fallback (built-in voice) sounds clearly robotic. Whisper is unloaded
 from GPU memory before synthesis (6 GB card).
+## Full pipeline run (26 s Slovak recording, 6 segments, RTX 2060)
+
+| Metric | Value |
+|---|---|
+| Pipeline time | 99 s (includes loading Whisper and XTTS) |
+| Source duration | 25.5 s |
+| Dubbed duration | 29.9 s |
+| Duration ratio | 1.17 |
+| Segments outside the 0.9-1.1 stretch limit | 5 of 6 (83 %) |
+| Max delay of a segment vs. original | 2.9 s |
+| Segments voiced by the clone | 6 of 6 |
+
+English speech is longer than Slovak, and the original has short pauses, so the
+delay accumulates towards the end of the track. This is measured by our own
+formula (`compute_metrics`), as planned: naturalness has priority over speed
+adjustment. XTTS output varies between runs

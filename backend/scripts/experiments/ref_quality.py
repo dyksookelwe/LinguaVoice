@@ -11,6 +11,6 @@ TEXT = (
     "When a butterfly lands on a flower, its legs help it find food."
 )
 
-for name in ("ref_16k", "ref_24k"):
+for name in ("ref_24k", "ref_denoised_soft"):
     out = clone_speech(TEXT, S / f"{name}.wav", S / f"out_{name}.wav")
     print(out)

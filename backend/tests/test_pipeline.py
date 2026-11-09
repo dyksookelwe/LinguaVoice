@@ -38,10 +38,14 @@ def test_run_pipeline_is_a_function_chain(tmp_path: Path, monkeypatch) -> None:
 
     job: Job = Job(id="job-1", source_path=str(wav_path))
 
-    with pytest.raises(NotImplementedError, match="stage 6"):
-        run_pipeline(job)
+    result = run_pipeline(job)
 
-    assert job.status == JobStatus.failed
+    assert result.status == JobStatus.done
+    assert Path(result.output_path).exists()
+    assert result.metrics.source_duration > 0
+    assert result.segments[0].voice == "clone"
+    assert Path(result.output_mp3_path).exists()
+    assert (Path(result.output_path).parent / "metrics.json").exists()
 
 
 def test_compute_metrics_from_segment_fields() -> None:

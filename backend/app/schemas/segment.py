@@ -13,6 +13,7 @@ class Segment(BaseModel):
     stretch_ratio: float = 1.0
     text_too_long: bool = False
     voice: str = ""
+    placed_start: float = 0.0
 
     @property
     def duration(self) -> float:

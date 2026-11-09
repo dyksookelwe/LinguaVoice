@@ -56,3 +56,12 @@ model.
 `Segment.text_too_long` using a characters-per-second estimate
 (`TTS_CHARS_PER_SEC`, `LENGTH_TOLERANCE`). Tests mock the engine, so they do
 not spend API characters.
+## Stage 6 status
+
+`align_segment` records `stretch_ratio = gen_duration / src_duration` and
+changes tempo (ffmpeg `atempo`) only inside 0.9-1.1; otherwise the audio is
+left as is and the metric marks the segment. `assemble_track` places segments
+at their original start times; an overflowing segment shifts the next one
+(`Segment.placed_start`). The pipeline exports `dubbed.wav`, `dubbed.mp3` and
+`metrics.json` (pipeline time, durations, overstretched share, max delay,
+share of cloned segments), all computed by our code.
