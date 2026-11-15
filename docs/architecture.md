@@ -65,3 +65,19 @@ at their original start times; an overflowing segment shifts the next one
 (`Segment.placed_start`). The pipeline exports `dubbed.wav`, `dubbed.mp3` and
 `metrics.json` (pipeline time, durations, overstretched share, max delay,
 share of cloned segments), all computed by our code.
+## Stage 7 status
+
+`POST /jobs` saves and validates the upload, creates a Job and starts
+`run_job` in the background (the response returns immediately). Jobs run one
+at a time (a lock in `services/jobs.py`) because the models share one GPU.
+`GET /jobs/{id}` returns status, segments (source and translated text, timing,
+stretch ratio, flags) and metrics, without server file paths.
+`GET /jobs/{id}/audio?format=mp3|wav` downloads the dub,
+`GET /jobs/{id}/original` the source recording.
+
+States: `queued -> processing -> done | needs_review | failed`.
+`needs_review` is our rule: some segment has `text_too_long` or a stretch
+ratio outside 0.9-1.1.
+
+Limitations: jobs are stored in memory (a server restart clears the list;
+files stay on disk until the TTL cleanup); one job is processed at a time.

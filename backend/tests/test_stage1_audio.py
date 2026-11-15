@@ -19,6 +19,12 @@ MODULES = ("app.audio.validate", "app.services.storage", "app.api.jobs")
 
 
 @pytest.fixture(autouse=True)
+def no_pipeline(monkeypatch):
+    """Эти тесты проверяют только приём файла: пайплайн не запускаем."""
+    monkeypatch.setattr("app.api.jobs.run_job", lambda job_id: None)
+
+
+@pytest.fixture(autouse=True)
 def settings_override(monkeypatch, tmp_path):
     """Подменяет настройки на время теста; загрузки идут во временную папку."""
     state = {"upload_dir": str(tmp_path / "uploads")}

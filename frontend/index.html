@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LinguaVoice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#1c2a40; --panel:#22314a; --line:rgba(255,255,255,.22); --text:#e9eef5;
+  --muted:#8fa0b8; --coral:#f2a39b; --ink:#16212f;
+  --head:"Barlow Condensed","Arial Narrow",Impact,sans-serif;
+  --body:Barlow,"Segoe UI",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;color:var(--text);font:400 16px/1.5 var(--body);padding:40px 24px 64px}
+main{max-width:1040px;margin:0 auto}
+h1{font:600 clamp(40px,7vw,68px)/.95 var(--head);text-transform:uppercase;margin:0 0 12px;letter-spacing:.01em}
+.lead{color:var(--muted);max-width:56ch;margin:0 0 32px}
+.label{font:600 14px var(--head);letter-spacing:.12em;text-transform:uppercase;color:var(--coral);margin:0 0 12px}
+.box{position:relative;border:1px solid var(--line);padding:22px;margin-bottom:24px}
+.box::before,.box::after{content:"+";position:absolute;font:12px/1 var(--body);color:var(--muted);background:var(--bg);padding:0 3px}
+.box::before{top:-7px;left:-5px}.box::after{bottom:-7px;right:-5px}
+.drop{display:block;border:1px dashed var(--line);padding:44px 20px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover,.drop:focus-visible,.drop.over{border-color:var(--coral);background:rgba(242,163,155,.06);outline:none}
+.drop strong{display:block;font:600 24px var(--head);letter-spacing:.03em}
+.drop span{color:var(--muted);font-size:14px}
+.status{display:none;align-items:center;gap:12px;margin-top:18px}
+.status.on{display:flex}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--coral);animation:pulse 1.2s ease-in-out infinite}
+.status.fail .dot{animation:none}
+@keyframes pulse{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.dot{animation:none}}
+.msg{display:none;margin-top:18px;padding:12px 14px;border-left:3px solid var(--coral);background:rgba(242,163,155,.08)}
+.msg.on{display:block}
+#result{display:none}#result.on{display:block}
+.players{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.tag{display:inline-block;font:600 14px var(--head);border:1px solid currentColor;padding:1px 8px;margin-right:8px;letter-spacing:.06em}
+.tag.sk{color:var(--coral)}.tag.en{color:var(--text)}
+audio{width:100%;margin-top:10px;filter:invert(.9) hue-rotate(180deg)}
+.dl{display:inline-flex;gap:16px;margin-top:10px;font-size:14px}
+a{color:var(--coral)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0;border:1px solid var(--line);margin-bottom:24px}
+.m{padding:16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);margin:0 -1px -1px 0}
+.m b{display:block;font:500 32px/1.1 var(--head)}
+.m span{color:var(--muted);font-size:13px}
+.m.warn b{color:var(--coral)}
+.seg{display:grid;grid-template-columns:96px 1fr 1fr;gap:20px;padding:16px 0;border-top:1px solid var(--line);cursor:pointer}
+.seg:first-of-type{border-top:0}
+.seg:hover{background:rgba(255,255,255,.03)}
+.seg:focus-visible{outline:1px solid var(--coral)}
+.time{font:500 18px var(--head);color:var(--muted)}
+.chip{display:inline-block;margin-top:6px;font-size:12px;border:1px solid var(--line);padding:0 6px;color:var(--muted)}
+.chip.bad{border-color:var(--coral);color:var(--coral)}
+.sk-t{color:var(--muted)}
+.hint{color:var(--muted);font-size:13px;margin:0 0 8px}
+@media (max-width:720px){
+  .players{grid-template-columns:1fr}
+  .seg{grid-template-columns:1fr;gap:6px}
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>Dabing so zachovaním hlasu</h1>
+  <p class="lead">Nahrajte slovenskú nahrávku a systém ju preloží do angličtiny a nadabuje vaším hlasom.</p>
+
+  <section class="box">
+    <p class="label">Nahrávka</p>
+    <label class="drop" id="drop" tabindex="0">
+      <strong>Presuňte sem súbor MP3 alebo WAV</strong>
+      <span>alebo kliknutím vyberte súbor. Maximálne 2 minúty a 10 MB.</span>
+      <input id="file" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav" hidden>
+    </label>
+    <div class="status" id="status"><i class="dot"></i><span id="statusText"></span></div>
+    <div class="msg" id="msg"></div>
+  </section>
+
+  <div id="result">
+    <section class="box">
+      <p class="label">Porovnanie</p>
+      <div class="players">
+        <div>
+          <span class="tag sk">SK</span>Originál
+          <audio id="orig" controls preload="metadata"></audio>
+        </div>
+        <div>
+          <span class="tag en">EN</span>Dabing
+          <audio id="dub" controls preload="metadata"></audio>
+          <div class="dl"><a id="dlMp3" href="#">Stiahnuť MP3</a><a id="dlWav" href="#">Stiahnuť WAV</a></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="msg" id="review"></div>
+
+    <p class="label" style="margin-top:24px">Metriky</p>
+    <div class="metrics" id="metrics"></div>
+
+    <section class="box">
+      <p class="label">Segmenty</p>
+      <p class="hint">Kliknutím na segment prejdete na jeho začiatok v oboch prehrávačoch.</p>
+      <div id="segments"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const el = (tag, cls, text) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+const LABELS = {queued: "Vo fronte", processing: "Prebieha spracovanie"};
+let jobId = null, timer = null, t0 = 0;
+
+const drop = $("#drop"), input = $("#file");
+drop.addEventListener("click", () => input.click());
+drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+["dragenter", "dragover"].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => { if (e.dataTransfer.files[0]) start(e.dataTransfer.files[0]); });
+input.addEventListener("change", () => { if (input.files[0]) start(input.files[0]); });
+
+function setStatus(text, failed) {
+  const s = $("#status");
+  s.classList.toggle("on", !!text);
+  s.classList.toggle("fail", !!failed);
+  $("#statusText").textContent = text || "";
+}
+function showMsg(id, text) {
+  const m = $(id);
+  m.textContent = text || "";
+  m.classList.toggle("on", !!text);
+}
+function fail(text) {
+  clearTimeout(timer);
+  setStatus("", false);
+  showMsg("#msg", text);
+}
+function reset() {
+  clearTimeout(timer);
+  showMsg("#msg", "");
+  setStatus("", false);
+  $("#result").classList.remove("on");
+}
+
+async function start(file) {
+  reset();
+  setStatus("Nahráva sa súbor…");
+  const fd = new FormData();
+  fd.append("file", file);
+  try {
+    const r = await fetch("/jobs", {method: "POST", body: fd});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return fail(typeof j.detail === "string" ? j.detail : "Server neprijal súbor (kód " + r.status + ")");
+    jobId = j.job_id;
+    t0 = Date.now();
+    poll();
+  } catch (e) {
+    fail("Nepodarilo sa spojiť so serverom. Skontrolujte, či je spustený.");
+  }
+}
+
+async function poll() {
+  try {
+    const r = await fetch("/jobs/" + jobId);
+    const j = await r.json();
+    if (j.status === "failed") return fail(j.error || "Spracovanie zlyhalo.");
+    if (j.status === "done" || j.status === "needs_review") return show(j);
+    const sec = Math.round((Date.now() - t0) / 1000);
+    setStatus((LABELS[j.status] || j.status) + ", " + sec + " с. Zvyčajne to trvá 1 až 2 minúty.");
+  } catch (e) { /* временный сбой: пробуем ещё раз */ }
+  timer = setTimeout(poll, 2000);
+}
+
+const f1 = n => Number(n).toFixed(1);
+const pct = n => Math.round(n * 100) + "%";
+const inRange = r => r >= 0.9 && r <= 1.1;
+
+function show(j) {
+  setStatus("");
+  const base = "/jobs/" + j.id;
+  $("#orig").src = base + "/original";
+  $("#dub").src = base + "/audio";
+  $("#dlMp3").href = base + "/audio?format=mp3";
+  $("#dlWav").href = base + "/audio?format=wav";
+
+  const m = j.metrics || {};
+  const cards = [
+    [f1(m.source_duration) + " с", "originál"],
+    [f1(m.dubbed_duration) + " с", "dabing", m.duration_ratio > 1.1],
+    [f1(m.max_delay_seconds) + " с", "max. oneskorenie", m.max_delay_seconds > 1],
+    [pct(m.overstretched_segment_ratio), "segmentov mimo rozsahu natiahnutia 0,9–1,1", m.overstretched_segment_ratio > 0.5],
+    [pct(m.clone_segment_ratio), "nadabované klonom hlasu"],
+    [f1(m.pipeline_seconds) + " с", "čas spracovania"],
+  ];
+  const box = $("#metrics");
+  box.replaceChildren(...cards.map(([v, l, warn]) => {
+    const d = el("div", "m" + (warn ? " warn" : ""));
+    d.append(el("b", "", v), el("span", "", l));
+    return d;
+  }));
+
+  showMsg("#review", j.status === "needs_review"
+    ? "Vyžaduje sa kontrola: anglický dabing je dlhší než pôvodné frázy a niektoré segmenty prekročili povolené natiahnutie. Zvuk pritom nie je skreslený a časový nesúlad je zobrazený v metrikách."
+    : "");
+
+  const list = $("#segments");
+  list.replaceChildren(...j.segments.map(s => {
+    const row = el("div", "seg");
+    row.tabIndex = 0;
+    const left = el("div");
+    left.append(el("div", "time", f1(s.start) + "–" + f1(s.end) + " с"));
+    const ok = inRange(s.stretch_ratio);
+    left.append(el("span", "chip" + (ok ? "" : " bad"), "×" + s.stretch_ratio.toFixed(2)));
+    if (s.text_too_long) left.append(" ", el("span", "chip bad", "dlhý text"));
+    row.append(left, el("div", "sk-t", s.src_text), el("div", "", s.tgt_text));
+    const go = () => {
+      $("#orig").currentTime = s.start;
+      $("#dub").currentTime = s.placed_start;
+      $("#dub").play().catch(() => {});
+    };
+    row.addEventListener("click", go);
+    row.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+    return row;
+  }));
+  $("#result").classList.add("on");
+  $("#result").scrollIntoView({behavior: "smooth", block: "start"});
+}
+</script>
+</body>
+</html>

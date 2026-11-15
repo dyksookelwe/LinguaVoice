@@ -106,3 +106,16 @@ for SK -> EN. The provider adapters (`providers/cloning.py`,
 `providers/tts.py`) keep the engine replaceable, so a cloud adapter can be
 added later without changing the pipeline. Any cloud provider would need the
 speaker's consent for cloning and non-sensitive demo audio.
+## Stage 7: job API
+
+**Decision.** Background processing via FastAPI `BackgroundTasks`, in-memory job
+store, a global lock so that only one pipeline run uses the GPU at a time.
+
+**Why.** The pipeline takes about 1-2 minutes, so the request cannot wait for
+it. A queue service (Celery, Redis) or a database would be over-engineering
+for a student MVP; the storage and the runner are isolated in
+`services/jobs.py` and can be replaced later.
+
+**Known issue.** `text_too_long` is a rough early estimate (average speech
+rate); XTTS speed varies per phrase, so the measured `stretch_ratio` is the
+reliable signal.
