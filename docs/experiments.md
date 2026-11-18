@@ -1,75 +1,71 @@
-# Experiments
+# Experiments and verification
 
-## Voice cloning: XTTS-v2 (local, coqui-tts 0.28.0)
+The recorded experiments used an NVIDIA GeForce RTX 2060 with 6 GB of VRAM and Python 3.11. Torch was version 2.6.0 with CUDA 12.4, and coqui-tts was version 0.28.0. Timings describe individual runs and depend on the clip, device, cache state, and model output.
 
-**Setup.** Reference: 13 s Slovak speech sample (mono, 24 kHz, one speaker).
-Target: English phrases. Hardware: NVIDIA GeForce RTX 2060 (6 GB), PyTorch
-2.6.0+cu124, Python 3.11 (separate environment). Scripts:
-`backend/scripts/experiments/clone_xtts.py` and `fallback_xtts.py`.
+## Voice cloning with XTTS-v2
 
-**Results.**
+The reference was 13 seconds of Slovak speech from one speaker, recorded as a mono 24 kHz WAV. The target phrases were English. The experiment scripts are [clone_xtts.py](../backend/scripts/experiments/clone_xtts.py) and [fallback_xtts.py](../backend/scripts/experiments/fallback_xtts.py).
 
 | Case | Time |
-|---|---|
-| Model load (first run, includes ~2 GB download) | 99.5 s |
+|---|---:|
+| First model load, including about 2 GB of downloads | 99.5 s |
 | Clone, short phrase | 5.7 s |
-| Clone, longer phrase (2 sentences) | 8.0 s |
-| Built-in voice (fallback), longer phrase | 5.8 s |
+| Clone, two-sentence phrase | 8.0 s |
+| Built-in voice, same two-sentence phrase | 5.8 s |
 
-**Listening notes (subjective, one listener).**
-- Clone: timbre is similar to the original, not identical. Slightly robotic
-  on the longer phrase. English is intelligible; no background noise.
-- Built-in voice: different speaker by design; sounds unnatural.
+One listener described the clone as similar in timbre and intelligible, with a slightly robotic quality on the longer phrase. The built-in voice sounded like a different speaker and was judged unnatural. Speaker similarity was assessed by listening to a single reference sample.
 
-**Limitations.**
-- A Slovak reference is used for English output (cross-lingual cloning), which
-  may lower similarity compared with an English reference of the same speaker.
-- Only one reference sample and one listener, so no objective similarity score.
-- Generation is a few seconds per phrase on GPU; first load is slow.
-## ASR: faster-whisper, Slovak speech (26 s sample, RTX 2060, float16)
+## Slovak speech recognition
 
-| Model | Transcription time | Quality (subjective) |
-|---|---|---|
-| small | n/a (not recorded) | Many errors, start of the text lost |
-| medium | 2.9 s | Several word errors ("motele", "krydla") |
-| large-v3 | 4.1 s | Minor diacritics errors ("motyle", "oče"), meaning preserved |
+The comparison used one approximately 26-second Slovak sample with CUDA float16. The [ASR experiment script](../backend/scripts/experiments/asr_whisper.py) reports model loading and transcription separately.
 
-Segment timestamps matched the speaker's pauses for all models. Language is
-passed explicitly (`sk`). Whisper errors will propagate into translation, so
-segment text must be editable before translation (Stage 8).
-## Synthesis inside the pipeline: XTTS-v2 clone (26 s Slovak reference, 6 segments)
+| Model | Transcription time | Listening and transcript review |
+|---|---:|---|
+| `small` | Unrecorded | Many errors, with the beginning missing |
+| `medium` | 2.9 s | Several word errors |
+| `large-v3` | 4.1 s | Minor diacritic errors, with the meaning preserved |
 
-| Segment | Source, s | Generated, s | Ratio | chars/s |
-|---|---|---|---|---|
-| seg-1 | 2.5 | 2.8 | 1.12 | 18.7 |
-| seg-2 | 6.0 | 6.3 | 1.05 | 16.1 |
-| seg-3 | 3.6 | 4.4 | 1.20 | 16.7 |
-| seg-4 | 4.3 | 4.8 | 1.11 | 16.1 |
-| seg-5 | 2.5 | 2.7 | 1.08 | 15.2 |
-| seg-6 | 4.9 | 6.1 | 1.25 | 14.6 |
+Timestamps followed the speaker's pauses in this sample. The comparison was qualitative, and no formal word error rate was calculated. Recognition errors can propagate into translation. The current interface displays the transcript for review.
 
-Mean speech rate: 16.2 chars/s (`TTS_CHARS_PER_SEC` set to 16). English audio is
-5-25 % longer than the Slovak source; 4 of 6 segments exceed the 1.1 stretch
-limit planned for Stage 6.
+## Segment synthesis
 
-Reference sample rate: a 24 kHz reference gave a slightly cleaner clone than
-16 kHz (subjective, one listener), so cloning uses a separate 24 kHz reference
-while ASR keeps 16 kHz. Remaining artifacts: a slight robotic noise in clone
-output; fallback (built-in voice) sounds clearly robotic. Whisper is unloaded
-from GPU memory before synthesis (6 GB card).
-## Full pipeline run (26 s Slovak recording, 6 segments, RTX 2060)
+The six segments below come from the [stage 5 experiment](../backend/scripts/experiments/stage5_demo.py). Durations and ratios are rounded. This experiment measured synthesis before alignment.
 
-| Metric | Value |
-|---|---|
-| Pipeline time | 99 s (includes loading Whisper and XTTS) |
-| Source duration | 25.5 s |
-| Dubbed duration | 29.9 s |
-| Duration ratio | 1.17 |
-| Segments outside the 0.9-1.1 stretch limit | 5 of 6 (83 %) |
-| Max delay of a segment vs. original | 2.9 s |
+| Segment | Source window | Generated speech | Duration ratio | Characters/s |
+|---|---:|---:|---:|---:|
+| seg-1 | 2.5 s | 2.8 s | 1.12 | 18.7 |
+| seg-2 | 6.0 s | 6.3 s | 1.05 | 16.1 |
+| seg-3 | 3.6 s | 4.4 s | 1.20 | 16.7 |
+| seg-4 | 4.3 s | 4.8 s | 1.11 | 16.1 |
+| seg-5 | 2.5 s | 2.7 s | 1.08 | 15.2 |
+| seg-6 | 4.9 s | 6.1 s | 1.25 | 14.6 |
+
+The mean generation rate was 16.2 characters per second. Four of the six segments exceeded the 1.1 ratio later adopted as the upper alignment limit. A separate listening comparison found the 24 kHz voice reference slightly cleaner than the 16 kHz reference. The current pipeline generates the 24 kHz voice reference separately from the 16 kHz ASR input.
+
+## Recorded pipeline run
+
+The [stage 6 script](../backend/scripts/experiments/stage6_demo.py) ran the real processing pipeline directly on an approximately 26-second Slovak recording. It called transcription, translation, synthesis, alignment, and export in one run. This experiment exercised the pipeline through Python. The browser workflow has its own check below.
+
+| Metric | Recorded value |
+|---|---:|
+| Pipeline time, including Whisper and XTTS loading | 99.31 s |
+| Source segment span | 25.46 s |
+| Sum of dubbed segment durations | 29.91 s |
+| Duration ratio | 1.175 |
+| Segments outside the 0.9–1.1 pre-alignment range | 5 of 6 (83%) |
+| Maximum segment start delay | 2.92 s |
 | Segments voiced by the clone | 6 of 6 |
 
-English speech is longer than Slovak, and the original has short pauses, so the
-delay accumulates towards the end of the track. This is measured by our own
-formula (`compute_metrics`), as planned: naturalness has priority over speed
-adjustment. XTTS output varies between runs
+The English segments occupied more time than the source window, so later segments started after their original timestamps. See [metric definitions](architecture.md#metrics) for how the segment metrics relate to file durations. Timing and similarity require more speakers and repeated runs before drawing broader conclusions.
+
+## Repeat the pipeline and check the browser
+
+For the pipeline-only run, place a consented Slovak recording at `backend/scripts/samples_raw/sk_long.mp3`. With the [local setup](../README.md#run-locally-on-windows) complete, run this from the repository root.
+
+```powershell
+.\.venv-tts\Scripts\python.exe backend/scripts/experiments/stage6_demo.py
+```
+
+The script copies the input to `backend/var/demo/` and writes `dubbed.wav`, `dubbed.mp3`, and `metrics.json` there. Sample recordings and outputs are ignored by Git.
+
+For the browser check, start the server, upload a consented Slovak recording from the UI, and wait for completion. Compare the Slovak transcript and English translation, listen to both tracks, select a segment to check the playback timestamps, and open both downloaded formats. Record the input duration, pipeline time, review status, and observed timing and speech-quality issues. This check uses actual model inference and the live DeepL API.

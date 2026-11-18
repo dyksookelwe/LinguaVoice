@@ -1,513 +1,71 @@
 # LinguaVoice
 
-LinguaVoice is a local research demo for dubbing short Slovak speech recordings
-into English. It combines faster-whisper transcription, DeepL translation,
-XTTS-v2 voice cloning with a built-in fallback voice, and FFmpeg audio alignment
-and export.
+LinguaVoice is a local research demo that dubs short Slovak speech recordings into US English. It uses faster-whisper for transcription, DeepL for translation, XTTS-v2 for voice synthesis, and FFmpeg for audio conversion, alignment, and export.
 
-The Slovak web interface accepts a single-speaker MP3 or WAV file up to 10 MB
-and 2 minutes with the default settings. It shows job status, source and translated
-segments, timing metrics, and playback for both recordings. The dub is
-downloadable as MP3 or WAV.
+The Slovak web interface accepts MP3 and WAV recordings. The default limits are 10 MB and 120 seconds. Use a clear recording with one speaker. The interface shows processing status, source and translated segments, timing metrics, and both audio players. The English dub is available as MP3 and WAV.
 
 ## Run locally on Windows
 
-Use Python 3.11, a DeepL API key, and an FFmpeg installation with both
-`ffmpeg` and `ffprobe` on PATH. The recorded demo used an NVIDIA RTX 2060 with
-6 GB of VRAM. CPU processing is available and takes longer.
+Use Python 3.11, FFmpeg with `ffmpeg` and `ffprobe` on PATH, and a DeepL API key. Internet access is needed for model downloads and DeepL requests. The recorded experiments used an NVIDIA RTX 2060 with 6 GB of VRAM. The code also supports CPU inference, which takes longer.
+
+Open PowerShell in the repository root. Check the executables and create the virtual environment.
 
 ```powershell
+py -3.11 --version
+Get-Command ffmpeg,ffprobe
 py -3.11 -m venv .venv-tts
-.\.venv-tts\Scripts\python.exe -m pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
-.\.venv-tts\Scripts\python.exe -m pip install -r backend/requirements.txt coqui-tts==0.28.0
-Copy-Item .env.example .env
 ```
 
-Run the copy command for a fresh setup. In `.env`, set `DEEPL_API_KEY` to your
-key. Then start the server from the repository root.
+Install PyTorch and torchaudio for the hardware you will use. The CUDA 12.4 setup below is the one used in the recorded experiments.
+
+```powershell
+.\.venv-tts\Scripts\python.exe -m pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+```
+
+For a CPU-only installation, use the CPU wheel index instead.
+
+```powershell
+.\.venv-tts\Scripts\python.exe -m pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+```
+
+Install the application dependencies and create the local configuration if it is missing.
+
+```powershell
+.\.venv-tts\Scripts\python.exe -m pip install -r backend/requirements.txt coqui-tts==0.28.0
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+```
+
+Set `DEEPL_API_KEY` in the repository-root `.env`. Then start the server from the repository root.
 
 ```powershell
 Set-Location backend
 ..\.venv-tts\Scripts\python.exe -m uvicorn app.main:app
 ```
 
-Open <http://127.0.0.1:8000>. The first processing run can download Whisper
-large-v3 and XTTS-v2 weights and prompt for acceptance of the XTTS model terms
-in the terminal. Use a clean Slovak recording from a speaker who agreed to
-voice cloning. Transcribed text is sent to DeepL for translation.
+Open [the web interface](http://127.0.0.1:8000) or [the interactive API documentation](http://127.0.0.1:8000/docs). FastAPI serves the HTML directly, so installation requires no frontend build. The first dubbing job can download the model weights and prompt for acceptance of the XTTS model terms in the terminal.
 
-From `backend`, run `..\.venv-tts\Scripts\python.exe -m pytest -q`. The
-tests use FFmpeg and FFprobe and run without model downloads or a DeepL key.
+Use recordings from speakers who consented to voice cloning. LinguaVoice processes audio locally and sends transcribed text to DeepL for translation. Keep `.env`, recordings, and generated files out of Git.
 
-## Demo status
+## Verify the application
 
-- The documented 25.5-second sample took 99 seconds on the RTX 2060. Its dub
-  was 29.9 seconds long, with a maximum segment delay of 2.9 seconds.
-- Transcript and translation are displayed for review. In-app editing and
-  segment regeneration remain planned.
-- One server process handles one dubbing job at a time. Job status is kept in
-  memory, and saved audio is subject to cleanup when new jobs are submitted.
-- See [architecture](docs/architecture.md), [decisions](docs/decisions.md),
-  and [experiment results and methodology](docs/experiments.md).
+From `backend`, run the automated suite. The audio tests use FFmpeg and FFprobe. Tests substitute provider responses and require neither model downloads nor a DeepL key.
 
-## Original project proposal
-
-The original proposal below describes English-to-Slovak dubbing and a wider
-scope that includes editing and public deployment.
-
-An AI-powered application for dubbing English speech into Slovak while investigating methods for preserving the original speaker’s voice characteristics.
-
-The project combines speech recognition, machine translation, voice synthesis, and audio processing in a web application. It also explores the trade-offs between voice similarity, speech quality, synchronization, processing speed, and cost.
-
-## Project Goal
-
-The goal is to develop an application that transforms English-language audio recordings into Slovak speech while preserving the original meaning and, where technically feasible, recognizable characteristics of the original speaker’s voice.
-
-The project focuses on integrating and evaluating existing AI technologies rather than training speech recognition or voice synthesis models from scratch.
-
-### Input
-
-An English-language audio recording in MP3 or WAV format.
-
-Initially, short recordings containing a single speaker and relatively clear speech.
-
-### Process
-
-- Audio validation and preprocessing.
-- Automatic speech recognition.
-- Speech segmentation and timestamp extraction.
-- English-to-Slovak translation.
-- Slovak speech synthesis using voice cloning or a standard TTS fallback.
-- Audio alignment, segment assembly, and export.
-
-### Output
-
-A Slovak-language audio recording that can be played back and downloaded.
-
-## User Interface
-
-The planned web application will support:
-
-- Audio upload and processing initiation.
-- Processing status and error reporting.
-- Display and editing of the recognized English transcript.
-- Display and editing of the Slovak translation.
-- Review and editing of individual speech segments.
-- Playback of generated segments where feasible.
-- Playback and download of the final audio.
-
-## Minimum Viable Product (MVP)
-
-The MVP will focus on a complete English-to-Slovak audio dubbing workflow for short recordings containing a single speaker.
-
-The initial version should support the following workflow:
-
-1. Upload an English-language audio recording.
-2. Validate and preprocess the input audio.
-3. Generate an English transcript with timestamps or segment boundaries.
-4. Translate the transcript into Slovak.
-5. Allow the user to review and edit the transcript and translation.
-6. Generate Slovak speech using voice cloning or voice adaptation where technically feasible, with a standard Slovak TTS solution as a fallback.
-7. Allow the user to review and edit individual segments.
-8. Regenerate audio for an edited segment.
-9. Align and combine the generated segments into a single audio recording.
-10. Play back and download the final audio through the web application.
-
-### MVP Scope
-
-**Included:**
-
-- English audio input and Slovak audio output.
-- Single-speaker recordings.
-- Transcription, translation, and speech synthesis.
-- Basic segmentation and timestamp handling.
-- Text and segment editing.
-- Basic audio synchronization and export.
-- Public web deployment.
-- Error handling and input validation.
-- Automated tests for important processing components.
-- Documentation of the architecture, technology choices, and evaluation results.
-
-**Out of scope for the initial MVP:**
-
-- Video input and video export.
-- Lip synchronization.
-- Multi-speaker detection and speaker-specific voice assignment.
-- Training custom speech recognition or voice synthesis models.
-- Advanced background music removal and source separation.
-- Professional-grade audio editing.
-- User accounts, subscriptions, and payment processing.
-- Support for arbitrary input and output languages.
-
-These features may be considered after the core audio workflow has been validated.
-
-## Proposed Processing Pipeline
-
-The following pipeline represents the current conceptual design. The exact implementation and technology choices will be determined through experimentation.
-
-### 1. Audio Validation and Preprocessing
-
-Validate the uploaded file, check its format and duration, and prepare the audio for downstream processing.
-
-### 2. Automatic Speech Recognition (ASR)
-
-Transcribe the English speech into text using a suitable speech recognition model or service.
-
-### 3. Segmentation and Timestamping
-
-Divide the transcript into manageable speech segments and associate them with their approximate positions in the original recording.
-
-### 4. Translation
-
-Translate the English transcript into Slovak while preserving meaning, context, and natural phrasing.
-
-### 5. Voice Synthesis
-
-Generate Slovak speech using a voice cloning or voice adaptation solution where feasible. If suitable cross-lingual voice preservation cannot be achieved, use a standard Slovak TTS solution.
-
-### 6. Audio Alignment and Export
-
-Adjust segment timing and, where appropriate, playback speed. Combine the generated segments into a single audio recording and export the result.
-
-The pipeline may be revised if experimental results reveal a more suitable approach.
-
-## Candidate Technologies
-
-The technologies listed below are candidates for evaluation, not final implementation decisions.
-
-| Pipeline Stage | Candidate Technologies |
-| --- | --- |
-| Audio preprocessing | FFmpeg, librosa |
-| Speech recognition (ASR) | faster-whisper, WhisperX, hosted ASR APIs |
-| Segmentation and timestamping | WhisperX, ASR timestamps, forced alignment |
-| Translation | Neural machine translation models, LLMs, translation APIs |
-| Voice synthesis | Commercial TTS and voice cloning APIs, multilingual local models |
-| Audio synchronization | Time stretching, segment-level timing adjustment, text adaptation |
-| Audio assembly and export | FFmpeg |
-| Backend | Python, FastAPI |
-| Frontend | React, TypeScript |
-| Testing | pytest, frontend testing tools |
-| Deployment | Container-based or managed web hosting |
-
-The final stack will be selected based on experimental results, integration requirements, and deployment constraints.
-
-## Technology Selection Criteria
-
-Candidate technologies will be evaluated according to the following criteria:
-
-- **Output quality:** Naturalness, intelligibility, pronunciation, and overall dubbing quality.
-- **Slovak language support:** Actual quality of Slovak translation and speech synthesis, including cross-lingual voice cloning.
-- **Voice similarity:** The extent to which the generated speech retains recognizable characteristics of the original speaker.
-- **Synchronization:** Accuracy of segment boundaries and compatibility between original and generated speech duration.
-- **Processing speed:** Time required to process an audio recording and individual pipeline stages.
-- **Cost:** Estimated cost per processed recording, including repeated generation during editing.
-- **Hardware requirements:** CPU, GPU, memory, and storage requirements.
-- **Integration complexity:** Effort required to integrate the technology into the application.
-- **Licensing:** Compatibility with a public GitHub repository and the intended use of the application.
-- **Deployment feasibility:** Resource requirements, service limitations, reliability, and operational complexity.
-
-The objective is to identify a practical combination of technologies that balances quality, cost, and implementation complexity.
-
-## Research Questions
-
-### 1. Voice Generation and Cross-Lingual Voice Cloning
-
-Can existing voice synthesis solutions generate natural-sounding Slovak speech while preserving recognizable characteristics of a speaker whose reference voice is in English?
-
-The investigation will focus on:
-
-- Support for Slovak speech generation.
-- Cross-lingual voice cloning capabilities.
-- Similarity to the original speaker.
-- Slovak pronunciation and intelligibility.
-- Differences between cloned speech and standard Slovak TTS.
-- API limitations, licensing, and processing cost.
-
-Voice cloning is a primary research objective, but the application must remain functional if the available solutions do not provide satisfactory results.
-
-### 2. Speech Recognition and Translation
-
-How accurately can existing ASR and translation solutions process short English-language recordings and produce reliable Slovak translations?
-
-The investigation will focus on:
-
-- Recognition accuracy against reference transcripts.
-- Preservation of meaning during translation.
-- Natural Slovak phrasing.
-- Timestamp accuracy and segmentation quality.
-- Differences between local models and external APIs.
-- Processing speed and cost.
-
-### 3. Audio Synchronization
-
-How can generated Slovak speech be aligned with the timing of the original English speech?
-
-The investigation will consider:
-
-- Segment-level duration differences.
-- Time stretching and playback speed adjustment.
-- Text adaptation for segments that are too long or too short.
-- Pauses and transitions between segments.
-- The trade-off between synchronization and speech naturalness.
-
-## Architecture Approach
-
-The application will initially follow a modular architecture with separate frontend and backend components.
-
-The backend will coordinate the dubbing workflow while keeping application API logic, AI provider integrations, and audio processing operations separated.
-
-The architecture should support:
-
-- Replacing or comparing AI models and external services without extensive changes to the application.
-- Testing individual processing stages independently.
-- Handling processing failures and reporting status to the user.
-- Supporting transcript and segment editing.
-- Extending the application with additional audio and video processing capabilities.
-
-The initial implementation will prioritize simplicity and maintainability. Additional infrastructure will be introduced only when justified by the selected technologies or application requirements.
-
-## Project Structure
-
-The following structure is provisional and may change as the technology selection and implementation progress.
-
-```text
-LinguaVoice/
-├── README.md
-├── .env.example
-├── .gitignore
-│
-├── docs/
-│   ├── architecture.md
-│   ├── experiments.md
-│   └── decisions.md
-│
-├── backend/
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── config.py
-│   │   ├── api/
-│   │   ├── schemas/
-│   │   ├── services/
-│   │   ├── providers/
-│   │   └── audio/
-│   ├── tests/
-│   └── pyproject.toml
-│
-├── frontend/
-│   ├── src/
-│   └── package.json
-│
-└── scripts/
-    └── experiments/
+```powershell
+..\.venv-tts\Scripts\python.exe -m pytest -q
 ```
 
-### Main Components
+For an end-to-end check with the real providers, upload a short Slovak recording in the browser. Wait for the dub, compare the transcript and translation, play both tracks, and open the downloaded MP3 and WAV. A result flagged for review still has playable audio. Verify that selecting a segment jumps to its original and dubbed timestamps. See [experiments](docs/experiments.md) for the recorded pipeline run and the scope of its measurements.
 
-- **Backend:** Provides the application API and coordinates the dubbing workflow.
-- **Frontend:** Provides the user interface for uploading audio, reviewing and editing text, managing segments, and playing or downloading the generated audio.
-- **Providers:** Contains integrations with external APIs or local models for speech recognition, translation, and voice synthesis.
-- **Audio Processing:** Contains audio validation, preprocessing, synchronization, and export functionality.
-- **Tests:** Contains automated tests for individual components and end-to-end processing workflows.
-- **Experiments:** Contains scripts and supporting code used to evaluate candidate technologies.
-- **Documentation:** Records architectural decisions, experimental results, and implementation details.
+## Current scope
 
-The exact module boundaries and internal interfaces will be determined during implementation.
+- The pipeline handles Slovak input and English output. The browser displays the transcript and translation for review. Editing, segment regeneration, video, and multi-speaker dubbing are outside the current demo.
+- Timing can drift when the translation does not fit its source segment. The interface reports segment start delay and duration metrics.
+- A single server process runs one dubbing job at a time. Restarting the server clears job status. Files can remain until cleanup is triggered by a later upload.
+- The demo runs locally. The application has no authentication or per-user job isolation.
 
-## Deployment and Budget
+## Project documentation
 
-The target is a publicly accessible web application that can be demonstrated without requiring users to install software locally.
-
-Deployment choices will depend on the selected technologies, resource requirements, and hosting limitations. Heavy model inference may be delegated to external APIs or executed in a separate environment when appropriate.
-
-The initial experimental budget is approximately €10–30.
-
-Cost evaluation will consider:
-
-- Speech recognition and translation API usage.
-- Voice synthesis and voice cloning generation.
-- Repeated synthesis of edited segments.
-- Hosting and other required services.
-
-The project will prioritize short test recordings, controlled experiments, and cost-effective solutions.
-
-API keys and other secrets must be stored outside the source code. Uploaded audio and generated files should be handled with appropriate access controls and temporary file cleanup.
-
-## Learning Objectives
-
-The project provides practical experience with:
-
-- Speech recognition and audio processing.
-- Machine translation and multilingual language technologies.
-- Voice synthesis and voice cloning.
-- Integration of AI models and external APIs.
-- Backend development with Python and FastAPI.
-- Frontend development for AI-powered applications.
-- API design and data contracts.
-- Audio segmentation, timing, and synchronization.
-- Automated testing and error handling.
-- Deployment and containerization.
-- Experimental evaluation and technical decision-making.
-
-The project also aims to develop the ability to explain architectural decisions, justify technology selection, and evaluate the limitations of AI systems.
-
-## Project Roadmap
-
-The project will be developed incrementally, progressing from technology research and feasibility testing to a functional audio dubbing application and further extensions.
-
-Each phase defines objectives and expected deliverables. The scope and implementation order may be adjusted based on experimental results, technology limitations, and implementation complexity.
-
-**Status legend:**
-
-- Planned
-- 🟡 In Progress
-- Completed
-- ⏸️ Deferred
-
-### Phase 1: Research and Technology Selection
-
-**Goal:** Identify a feasible and cost-effective combination of technologies.
-
-- [ ] Define functional and technical requirements for the MVP
-- [ ] Prepare representative English audio samples for testing
-- [ ] Evaluate speech recognition solutions for English audio
-- [ ] Compare translation solutions for English-to-Slovak translation
-- [ ] Investigate Slovak speech synthesis and cross-lingual voice cloning
-- [ ] Test a standard Slovak TTS solution as a fallback
-- [ ] Evaluate speech segmentation and timestamp extraction approaches
-- [ ] Compare candidate technologies based on quality, cost, speed, hardware requirements, and integration complexity
-- [ ] Review licensing restrictions and public usage requirements
-- [ ] Evaluate deployment options and resource limitations
-- [ ] Document experimental results and technology selection decisions
-- [ ] Select the initial technology stack
-
-**Deliverable:** A documented technology selection and a validated approach for building the initial audio dubbing pipeline.
-
-### Phase 2: Core Audio Processing Pipeline
-
-**Goal:** Implement the complete audio processing workflow independently of the web interface.
-
-- [ ] Implement audio file validation and format checks
-- [ ] Implement audio preprocessing and format conversion where necessary
-- [ ] Integrate automatic speech recognition (ASR)
-- [ ] Extract speech segments and timestamps
-- [ ] Integrate English-to-Slovak translation
-- [ ] Define a consistent internal representation for transcripts and segments
-- [ ] Integrate Slovak voice synthesis using the selected voice cloning or voice adaptation approach
-- [ ] Implement a standard Slovak TTS fallback
-- [ ] Implement basic duration adjustment and audio alignment
-- [ ] Combine generated segments into a single audio recording
-- [ ] Export the generated audio in a supported format
-- [ ] Implement error handling for failed processing stages and external service failures
-- [ ] Test the complete pipeline using short, single-speaker recordings
-
-**Deliverable:** A working pipeline that converts English audio into downloadable Slovak audio.
-
-### Phase 3: MVP Web Application
-
-**Goal:** Make the audio dubbing pipeline accessible through a public web application.
-
-- [ ] Implement the frontend interface
-- [ ] Implement audio upload and input validation
-- [ ] Add processing initiation and job status tracking
-- [ ] Display the recognized English transcript
-- [ ] Display the Slovak translation
-- [ ] Allow users to edit the transcript and translation
-- [ ] Display individual speech segments and their timestamps
-- [ ] Allow users to edit individual segments
-- [ ] Support regenerating audio for an edited segment
-- [ ] Add playback of individual generated segments where feasible
-- [ ] Add playback of the final generated audio
-- [ ] Implement audio file download
-- [ ] Display processing errors and actionable feedback
-- [ ] Connect the frontend to the backend API
-- [ ] Deploy the application to a public environment
-- [ ] Complete an end-to-end test using a single-speaker English recording
-
-**Deliverable:** A publicly accessible web application supporting audio upload, transcription, translation, editing, synthesis, playback, and download.
-
-### Phase 4: Quality Evaluation and Optimization
-
-**Goal:** Evaluate the generated dubbing and identify the limitations of the selected technologies.
-
-- [ ] Evaluate speech recognition accuracy against reference transcripts
-- [ ] Assess translation quality and meaning preservation
-- [ ] Evaluate Slovak speech naturalness, pronunciation, and intelligibility
-- [ ] Assess similarity between the generated voice and the original speaker
-- [ ] Compare voice cloning results with the standard Slovak TTS fallback
-- [ ] Measure processing time for individual pipeline stages
-- [ ] Estimate the cost per processed audio file
-- [ ] Evaluate timestamp accuracy and segment boundary quality
-- [ ] Assess duration differences between original and generated speech
-- [ ] Evaluate synchronization and segment transition quality
-- [ ] Identify failure cases and document known limitations
-- [ ] Optimize significant quality or performance bottlenecks
-- [ ] Document experimental results and justify technology choices
-
-**Deliverable:** A documented evaluation of the pipeline, including quality comparisons, cost estimates, limitations, and recommendations for improvement.
-
-### Phase 5: Reliability and Project Finalization
-
-**Goal:** Make the application reliable, reproducible, and ready for public demonstration.
-
-- [ ] Add unit tests for audio validation, segmentation, and other independent components
-- [ ] Add integration tests for the main processing workflow
-- [ ] Test invalid files, failed API calls, and incomplete processing jobs
-- [ ] Implement file size and audio duration limits
-- [ ] Verify temporary file handling and cleanup
-- [ ] Ensure API keys and other secrets are not exposed
-- [ ] Verify that the application operates within the available budget
-- [ ] Finalize the public deployment configuration
-- [ ] Containerize the application using Docker where appropriate
-- [ ] Prepare installation and usage instructions
-- [ ] Document the architecture and processing workflow
-- [ ] Publish evaluation results and known limitations
-- [ ] Review model and dependency licenses before public release
-- [ ] Prepare a reproducible demonstration using a short audio sample
-
-**Deliverable:** A stable, documented, publicly accessible MVP that can be demonstrated and evaluated without manual intervention from the developer.
-
-### Phase 6: Extended Audio Processing
-
-**Goal:** Improve the quality and flexibility of audio dubbing beyond the initial MVP.
-
-- [ ] Investigate noise reduction and audio restoration
-- [ ] Investigate background music and speech separation
-- [ ] Improve timing alignment between original and generated speech
-- [ ] Explore text adaptation for segments that are too long or too short
-- [ ] Improve handling of pauses and transitions between segments
-- [ ] Add support for longer audio recordings
-- [ ] Investigate multi-speaker detection and voice assignment
-- [ ] Evaluate whether additional infrastructure is required for more complex processing workflows
-
-**Deliverable:** An improved audio dubbing pipeline with additional capabilities validated through experiments.
-
-### Phase 7: Video Dubbing
-
-**Goal:** Extend the application from audio dubbing to video dubbing.
-
-- [ ] Add video file upload and validation
-- [ ] Extract and preprocess audio from video files
-- [ ] Preserve the original video timeline and relevant timing information
-- [ ] Synchronize generated speech with the original video timeline
-- [ ] Combine generated audio with the original video
-- [ ] Export dubbed video in a supported format
-- [ ] Investigate lip synchronization techniques
-- [ ] Evaluate synchronization quality and processing requirements
-
-**Deliverable:** A video dubbing workflow that builds on the validated audio processing pipeline.
-
-## Current Project Status
-
-**Current milestone:** Research and MVP development.
-
-**Immediate priorities:**
-
-- Verify the feasibility of Slovak voice synthesis that preserves recognizable characteristics of the original speaker.
-- Identify a reliable standard Slovak TTS fallback.
-- Validate the proposed ASR, translation, and segmentation approaches.
-- Confirm a feasible public deployment strategy.
-- Implement the first complete audio processing pipeline before investing heavily in the frontend.
-
-The initial release will focus on short English-language audio recordings containing a single speaker. Video processing, multi-speaker support, advanced audio restoration, and other extended features will be considered after the core workflow has been validated.
-
-The project will be considered successful when it provides a reproducible end-to-end audio dubbing workflow and documents the quality, cost, and limitations of the selected technologies.
+- [Architecture, API, and settings](docs/architecture.md)
+- [Implementation decisions and open research questions](docs/decisions.md)
+- [Recorded experiments and verification procedure](docs/experiments.md)
+- [Original proposal in Git history](https://github.com/dyksookelwe/LinguaVoice/blob/8e4c0b258772893c7a11613649176d83470b18c1/README.md)
