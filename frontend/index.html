@@ -118,15 +118,18 @@ const el = (tag, cls, text) => {
   return e;
 };
 const LABELS = {queued: "Vo fronte", processing: "Prebieha spracovanie"};
-let jobId = null, timer = null, t0 = 0;
+let activeRequest = 0, timer = null;
 
 const drop = $("#drop"), input = $("#file");
-drop.addEventListener("click", () => input.click());
 drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
 ["dragenter", "dragover"].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.add("over"); }));
 ["dragleave", "drop"].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.remove("over"); }));
 drop.addEventListener("drop", e => { if (e.dataTransfer.files[0]) start(e.dataTransfer.files[0]); });
-input.addEventListener("change", () => { if (input.files[0]) start(input.files[0]); });
+input.addEventListener("change", () => {
+  const file = input.files[0];
+  input.value = "";
+  if (file) start(file);
+});
 
 function setStatus(text, failed) {
   const s = $("#status");
@@ -152,6 +155,7 @@ function reset() {
 }
 
 async function start(file) {
+  const request = ++activeRequest;
   reset();
   setStatus("Nahráva sa súbor…");
   const fd = new FormData();
@@ -159,25 +163,33 @@ async function start(file) {
   try {
     const r = await fetch("/jobs", {method: "POST", body: fd});
     const j = await r.json().catch(() => ({}));
+    if (request !== activeRequest) return;
     if (!r.ok) return fail(typeof j.detail === "string" ? j.detail : "Server neprijal súbor (kód " + r.status + ")");
-    jobId = j.job_id;
-    t0 = Date.now();
-    poll();
+    poll(j.job_id, request, Date.now());
   } catch (e) {
-    fail("Nepodarilo sa spojiť so serverom. Skontrolujte, či je spustený.");
+    if (request === activeRequest) fail("Nepodarilo sa spojiť so serverom. Skontrolujte, či je spustený.");
   }
 }
 
-async function poll() {
+async function poll(jobId, request, started, failures = 0) {
+  if (request !== activeRequest) return;
   try {
     const r = await fetch("/jobs/" + jobId);
-    const j = await r.json();
+    const j = await r.json().catch(() => ({}));
+    if (request !== activeRequest) return;
+    if (r.status >= 500) throw new Error("Server unavailable");
+    if (!r.ok) return fail(typeof j.detail === "string" ? j.detail : "Stav úlohy sa nepodarilo načítať.");
     if (j.status === "failed") return fail(j.error || "Spracovanie zlyhalo.");
     if (j.status === "done" || j.status === "needs_review") return show(j);
-    const sec = Math.round((Date.now() - t0) / 1000);
-    setStatus((LABELS[j.status] || j.status) + ", " + sec + " с. Zvyčajne to trvá 1 až 2 minúty.");
-  } catch (e) { /* временный сбой: пробуем ещё раз */ }
-  timer = setTimeout(poll, 2000);
+    if (!Object.hasOwn(LABELS, j.status)) throw new Error("Unexpected job status");
+    const sec = Math.round((Date.now() - started) / 1000);
+    setStatus(LABELS[j.status] + ", " + sec + " s. Zvyčajne to trvá 1 až 2 minúty.");
+    failures = 0;
+  } catch (e) {
+    if (request !== activeRequest) return;
+    if (++failures >= 3) return fail("Stav úlohy sa opakovane nepodarilo načítať.");
+  }
+  timer = setTimeout(() => poll(jobId, request, started, failures), 2000);
 }
 
 const f1 = n => Number(n).toFixed(1);
