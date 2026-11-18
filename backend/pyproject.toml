@@ -1,0 +1,9 @@
+[project]
+name = "linguavoice-backend"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "LinguaVoice API and dubbing pipeline"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

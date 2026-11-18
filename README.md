@@ -1,4 +1,59 @@
-# LinguaVoice: English to Slovak
+# LinguaVoice
+
+LinguaVoice is a local research demo for dubbing short Slovak speech recordings
+into English. It combines faster-whisper transcription, DeepL translation,
+XTTS-v2 voice cloning with a built-in fallback voice, and FFmpeg audio alignment
+and export.
+
+The Slovak web interface accepts a single-speaker MP3 or WAV file up to 10 MB
+and 2 minutes with the default settings. It shows job status, source and translated
+segments, timing metrics, and playback for both recordings. The dub is
+downloadable as MP3 or WAV.
+
+## Run locally on Windows
+
+Use Python 3.11, a DeepL API key, and an FFmpeg installation with both
+`ffmpeg` and `ffprobe` on PATH. The recorded demo used an NVIDIA RTX 2060 with
+6 GB of VRAM. CPU processing is available and takes longer.
+
+```powershell
+py -3.11 -m venv .venv-tts
+.\.venv-tts\Scripts\python.exe -m pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+.\.venv-tts\Scripts\python.exe -m pip install -r backend/requirements.txt coqui-tts==0.28.0
+Copy-Item .env.example .env
+```
+
+Run the copy command for a fresh setup. In `.env`, set `DEEPL_API_KEY` to your
+key. Then start the server from the repository root.
+
+```powershell
+Set-Location backend
+..\.venv-tts\Scripts\python.exe -m uvicorn app.main:app
+```
+
+Open <http://127.0.0.1:8000>. The first processing run can download Whisper
+large-v3 and XTTS-v2 weights and prompt for acceptance of the XTTS model terms
+in the terminal. Use a clean Slovak recording from a speaker who agreed to
+voice cloning. Transcribed text is sent to DeepL for translation.
+
+From `backend`, run `..\.venv-tts\Scripts\python.exe -m pytest -q`. The
+tests use FFmpeg and FFprobe and run without model downloads or a DeepL key.
+
+## Demo status
+
+- The documented 25.5-second sample took 99 seconds on the RTX 2060. Its dub
+  was 29.9 seconds long, with a maximum segment delay of 2.9 seconds.
+- Transcript and translation are displayed for review. In-app editing and
+  segment regeneration remain planned.
+- One server process handles one dubbing job at a time. Job status is kept in
+  memory, and saved audio is subject to cleanup when new jobs are submitted.
+- See [architecture](docs/architecture.md), [decisions](docs/decisions.md),
+  and [experiment results and methodology](docs/experiments.md).
+
+## Original project proposal
+
+The original proposal below describes English-to-Slovak dubbing and a wider
+scope that includes editing and public deployment.
 
 An AI-powered application for dubbing English speech into Slovak while investigating methods for preserving the original speaker’s voice characteristics.
 

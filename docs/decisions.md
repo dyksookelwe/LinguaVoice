@@ -1,0 +1,121 @@
+# Decisions
+
+## D-001: Voice cloning strategy
+
+**Status:** Provisional
+
+- Voice cloning is the primary research goal for LinguaVoice.
+- Standard Slovak TTS remains the fallback.
+- No voice cloning provider has been selected as the final solution.
+- The preferred approach must work with a short audio reference, without requiring users to record a separate long voice dataset.
+
+## D-002: Voice similarity evaluation
+
+**Status:** Planned
+
+- Do not evaluate voice similarity by personal impression alone.
+- Compare providers using the same reference audio and target text.
+- Combine blind listener evaluations with an automated speaker-similarity metric.
+- Automated scores must be interpreted cautiously, especially across different languages.
+
+## D-003: Provider selection
+
+**Status:** Open
+
+- ElevenLabs Instant, Cartesia, and Polyvox have been tested.
+- Polyvox is the current best candidate based on preliminary listening tests.
+- Further testing is required before choosing a provider for implementation.
+- API availability, commercial licensing, and cost must be verified before integration.
+
+## D-004: Research before implementation
+
+- Do not build the full dubbing pipeline around an unvalidated voice cloning provider.
+- Keep provider-specific code isolated so the implementation can be changed without redesigning the application.
+
+## D-005: Function pipeline, not a chat model
+
+**Status:** Accepted
+
+- The application orchestrates named functions. It does not send a recording to a general AI model with a request to return dubbed audio.
+- ASR, translation, and synthesis models may be called only from their own function, with fixed inputs and structured outputs.
+- Alignment, duration limits, job status, and metrics are application logic.
+## Stage 2: voice cloning provider
+
+**Decision.** Primary clone: XTTS-v2 (open model, runs locally, no API key).
+Fallback: XTTS-v2 built-in voice for now; revisit at Stage 5 if its quality
+stays poor.
+
+**Why.** No paid account or API key needed, works offline, fits the limited
+API budget, and the result is "similar, not identical", which is acceptable
+for the MVP.
+
+**Consequences.**
+- XTTS needs Python 3.10-3.12, while the main backend runs on 3.14. XTTS lives
+  in a separate environment (`.venv-tts`, Python 3.11); how the backend calls
+  it (subprocess or small separate service) is decided at Stage 5.
+- Model weights use the Coqui Public Model License (non-commercial); fine for
+  this educational project, not for commercial use.
+- Voice samples are real people's voices: they stay out of git
+  (`backend/scripts/samples_raw/` is ignored) and are used only with the
+  speaker's consent.
+  ## Stage 3: ASR model
+
+**Decision.** faster-whisper, model `large-v3`, local GPU (float16), language
+passed explicitly. Segmentation logic (merge short pieces, split on pauses,
+length limit) is our own code on top of Whisper's text and timestamps.
+
+**Why.** Lowest word error rate on Slovak in our test (see experiments.md);
+fast enough on the available GPU. No API cost.
+## Stage 3: single Python 3.11 environment (supersedes the Stage 2 note)
+
+**Decision.** The whole project (backend, Whisper, XTTS) runs in one
+environment: `.venv-tts`, Python 3.11, PyTorch 2.6.0+cu124. The Python 3.14
+environment (`backend/.venv`) is no longer used.
+
+**Why.** XTTS needs Python 3.10-3.12, and Python 3.14 support of the ASR
+dependencies was not confirmed. One environment lets the backend call both
+models directly, without subprocess calls.
+## Stage 4: translation engine
+
+**Decision.** DeepL API (free developer plan, SK -> EN-US), called through the
+official `deepl` library. The engine is wrapped in `providers/translation.py`;
+our own code (`services/translate.py`) normalizes text, estimates speech
+length (characters per second) and flags segments whose translation will not
+fit the source window (`Segment.text_too_long`).
+
+**Why.** Strong quality on European languages, simple API, free allowance is
+far above our needs (a 2-minute recording is about 2,000 characters). A local
+alternative (`Helsinki-NLP/opus-mt-sk-en`) stays available if the key or the
+quota becomes a problem.
+
+**Notes.**
+- The API key lives only in `.env` (ignored by git).
+- Texts are sent to a third party. Check DeepL's data-handling terms for the
+  free plan and use only non-sensitive speech for the demo.
+- `TTS_CHARS_PER_SEC=14` is an initial guess; to be replaced by a measured
+  value at Stage 5.
+  ## Stage 5: cloud voice cloning deferred
+
+**Decision.** Keep XTTS-v2 (local) for cloning and fallback for now. Cloud
+cloning (e.g. ElevenLabs) may be added at the end of the project as an optional
+adapter.
+
+**Why.** Cloud cloning needs a paid plan and a payment card, and the project
+budget is zero. Cloud quality is reportedly better, but we did not measure it
+for SK -> EN. The provider adapters (`providers/cloning.py`,
+`providers/tts.py`) keep the engine replaceable, so a cloud adapter can be
+added later without changing the pipeline. Any cloud provider would need the
+speaker's consent for cloning and non-sensitive demo audio.
+## Stage 7: job API
+
+**Decision.** Background processing via FastAPI `BackgroundTasks`, in-memory job
+store, a global lock so that only one pipeline run uses the GPU at a time.
+
+**Why.** The pipeline takes about 1-2 minutes, so the request cannot wait for
+it. A queue service (Celery, Redis) or a database would be over-engineering
+for a student MVP; the storage and the runner are isolated in
+`services/jobs.py` and can be replaced later.
+
+**Known issue.** `text_too_long` is a rough early estimate (average speech
+rate); XTTS speed varies per phrase, so the measured `stretch_ratio` is the
+reliable signal.
